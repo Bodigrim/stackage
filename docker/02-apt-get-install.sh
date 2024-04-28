@@ -91,6 +91,7 @@ apt-get install -y \
     libnotify-dev \
     liboath-dev \
     libopenal-dev \
+    libopenmpi-dev \
     libpango1.0-dev \
     libpcap0.8-dev \
     libpcre2-dev \
@@ -139,6 +140,7 @@ apt-get install -y \
     nettle-dev \
     ninja-build \
     nodejs \
+    nvidia-cuda-toolkit \
     openjdk-8-jdk \
     python-mpltoolkits.basemap \
     python3-matplotlib \

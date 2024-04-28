@@ -214,7 +214,7 @@ where X is the major version number (e.g., lts20 for lts-20.\*).)
 Note that when starting a new LTS major release, you'll need to modify `.github/workflows/image.yml` to add a new lts branch.
 
 Ensure that the [global-hints.yaml
-file](https://github.com/fpco/stackage-content/blob/master/stack/global-hints.yaml)
+file](https://github.com/commercialhaskell/stackage-content/blob/master/stack/global-hints.yaml)
 is updated with information on the latest GHC release by cloning that
 repo and running `./update-global-hints.hs ghc-X.Y.Z`.
 
@@ -227,7 +227,7 @@ Supported versions: ...
 update-global-hints.hs: Received ExitFailure 1 when running
 ```
 
-Also required to build an LTS minor bump with a ghc version change: On the build server, modify `/var/stackage/stackage/automated/work/lts-$THIS_LTS_MAJOR_VER/constraints.yaml` and update the ghc-version. (You may need to update sibling files as well.) Then run `NOPLAN=1 /var/stackage/stackage/automated/build.sh lts-$THIS_LTS_MINOR_BUMP` to build the LTS.
+Also required to build an LTS minor bump with a ghc version change: modify <https://github.com/commercialhaskell/lts-haskell/tree/master/build-constraints> and update the ghc-version.  Then run `automated/build.sh lts-$THIS_LTS_MINOR_BUMP` to build the LTS.
 
 ### Getting the new image to the build server
 Once a new Docker image is available, you'll need to pull it onto the stackage-build server (see
@@ -248,7 +248,7 @@ For a new GHC version you should also delete the ~~cache~~ .stack-work snapshot 
 # for example
 SNAP_SERIES=nightly # or lts16
 OLD_GHCVER=8.10.1
-rm -r work/$SNAP_SERIES/unpack-dir/.stack-work/install/x86_64-linux/*/$OLD_GHCVER/
+rm -r work/$SNAP_SERIES/unpack-dir/.stack-work/install/x86_64-linux-tinfo6/*/$OLD_GHCVER/
 ```
 This should also be done when moving the Nightly docker image to a new version of Ubuntu.
 
@@ -281,7 +281,7 @@ You'll need to get your SSH public key added to the machine. ~/.ssh/config info:
 ```
 Host stackage-build
     User curators
-    Hostname build.stackage.org
+    Hostname stackage-builder.haskell.org
 ```
 
 ### Running the build script
@@ -308,17 +308,15 @@ info above).
 ### Building LTS minor releases
 Before running the build, please make sure that the Dockerfile in `automated/dockerfiles/lts-X.Y` is up to date, where X is the major version that you're building and Y is the latest minor version of X for which a Dockerfile exists.
   * If any changes need to be made, (eg, new GHC version), copy `automated/lts-X.Y/Dockerfile` to `automated/lts-X.Z/Dockerfile`, where Z is the minor version you're building, and include the new changes.
-  * If you are building the first release of a new LTS major version, create a new `lts-X.0/Dockerfile` based on the previous LTS's, and adjust the variables at the top to match the requirements of the snapshot.  Ensure that `STACK_VERSION` is the latest release of Stack, and `BOOTSTRAP_COMMIT` is the commit ID of this repo containing the version of the `bootstrap-commit.sh` used to build the snapshot.  Also ensure the FROM image's Ubuntu version matches that used in the [root Dockerfile](Dockerfile) used to build this snapshot.
+  * If you are building the first release of a new LTS major version, create a new `lts-X.0/Dockerfile` based on the previous LTS's, and adjust the variables at the top to match the requirements of the snapshot.  Ensure that `STACK_VERSION` is the latest release of Stack, and `BOOTSTRAP_COMMIT` is the commit ID of this repo containing the version of the `docker/*.sh` used to build the snapshot.  Also ensure the FROM image's Ubuntu version matches that used in the [root Dockerfile](Dockerfile) used to build this snapshot.
 
-First run `build.sh` to regenerate updated `ltsXX/work/constraints.yaml` and `ltsXX/work/snapshot-incomplete.yaml` files.
+For an LTS minor bump, you'll typically want to update <https://github.com/commercialhaskell/lts-haskell/tree/master/build-constraints> as needed:
 
-For an LTS minor bump, you'll typically want to:
+* constraint a package by appending an upperbound
+* add new packages
+* enable/disable test, benchmark, haddock when needed
 
-* Add constraints to package `range:` fields _under_ the `source:` field in that `constraints.yaml` (should not be necessary normally to edit `snapshot-incomplete.yaml` to change the version used for that package).
-* Add new packages to the `constraints.yaml` file
-* Test, benchmark, haddock failures can also be added to package fields in the `constraints.yaml` if necessary, though it should be avoided if possible for LTS.
-
-Then run `NOPLAN=1 build.sh` to build the generate an updated snapshot.
+Then run `./build.sh lts-X.Z` to generate an updated snapshot.
 
 If a build fails for bounds reasons, see all of the advice above. If the code
 itself doesn't build, or tests fail, open up an issue and then either put in a
@@ -326,18 +324,8 @@ version bound to avoid that version or something else. It's difficult to give
 universal advice on how to solve things, since each situation is unique. Let's
 develop this advice over time. For now: if you're not sure, ask for guidance.
 
-__`NOPLAN=1`__ If you wish to rerun a build without recalculating a
-build plan, you can set the environment variable `NOPLAN=1`. This is
-useful for such cases as an intermittent test failure, out of memory
-condition, or manually tweaking the plan file. (When using `NOPLAN=1`,
-if one needs to revert one package, say due to a build or test regression,
-one can edit `snapshot-incomplete.yaml`
-(the SHA256 hash of the .cabal file will get updated),
-to avoid having to rebuild everything again.)
-
-Note LTS builds without NOPLAN will use the latest Hackage data.
-
-If you need to make further modifications beyond what `constraints.yaml` allows, you can directly edit the `snapshot-incomplete.yaml` file. Then, instead of `NOPLAN=1 build.sh`, you need to use `NOPLAN=2 build.sh`. Note that from this point on, further changes to `constraints.yaml` will not impact the build plan.
+Note LTS builds will use the last Hackage data.
+You may need to `run-nightly.sh` to get a newer package, but this should be less common for lts.
 
 ### Timing
 
@@ -571,7 +559,7 @@ gogol-core is disabled with 96 dependents
 1. Add public ssh key to `~/.ssh/authorized_keys` on build server
 2. Add to commercialhaskell/stackage project.
 
-## Dealing with a new GHC release
+## Dealing with a new GHC major release
 
 As mentioned in the [GHC upgrade note], the major impact of a new GHC release
 is on the packages that are causing upper bounds to be put in place. In order
